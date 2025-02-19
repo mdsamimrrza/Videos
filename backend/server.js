@@ -42,25 +42,31 @@ const port = 5000;
 app.use(cors());
 app.use(bodyParser.json());
 
+// Initialize Replicate with the API token from environment variables
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+// Retrieve Gemini API key from environment variables
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
 if (!GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not defined");
 }
 
+// POST endpoint to generate a video from a text prompt
 app.post("/api/generate-video", async (req, res) => {
   try {
     const { prompt } = req.body;
+console.log("Received prompt:", prompt);
+console.log("Gemini API response:", geminiResponse.data);
+console.log("Generated text:", generatedText);
+console.log("Replicate API response:", replicateResponse);
 
     if (!prompt) {
       return res.status(400).json({ message: "Prompt is required." });
     }
 
-    // Step 1: Send prompt to Gemini
+    // Step 1: Send prompt to Gemini to generate refined content
     const geminiResponse = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -78,7 +84,7 @@ app.post("/api/generate-video", async (req, res) => {
       return res.status(500).json({ message: "Failed to generate content from Gemini." });
     }
 
-    // Step 2: Use Gemini-generated text as input for Replicate
+    // Step 2: Use the generated text as input for Replicate to generate a video
     const replicateResponse = await replicate.run(
       "zsxkib/pyramid-flow:8e221e66498a52bb3a928a4b49d85379c99ca60fec41511265deec35d547c1fb",
       { input: { prompt: generatedText } }
@@ -88,6 +94,7 @@ app.post("/api/generate-video", async (req, res) => {
       return res.status(500).json({ message: "Failed to generate video." });
     }
 
+    // Return the video URL to the client
     res.json({ videoUrl: replicateResponse[0] });
   } catch (error) {
     console.error("Error generating video:", error);
@@ -96,5 +103,6 @@ app.post("/api/generate-video", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server is running on port ${port}`);
 });
+
