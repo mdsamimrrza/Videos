@@ -11,10 +11,10 @@ const Dashboard = () => {
           <Video />
         </div>
 
-        {/* Image Box */}
+        {/* Image Box
         <div className="flex items-center justify-center bg-white rounded-md shadow-md p-4 w-full md:w-auto">
           <Image />
-        </div>
+        </div> */}
       </div>
     </div>
   );

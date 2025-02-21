@@ -1,108 +1,50 @@
-// import express from 'express';
-// import dotenv from 'dotenv';
-// import connectDB from './config/db.js';
-// import userRoutes from './routes/userRoutes.js';  
-// import cors from 'cors';
-
-// dotenv.config();
-// const app = express();
-// const PORT = process.env.PORT || 7000;
-
-// app.use(express.json());
-// app.use(cors({ origin: process.env.CORS_ORIGIN }));
-
-// app.use('/api', userRoutes);
-
-// connectDB()
-//   .then(() => {
-//     app.listen(PORT, () => {
-//       console.log(`Server is running on http://localhost:${PORT}`);
-//     });
-//   })
-//   .catch((err) => {
-//     console.error('Database connection error:', err);
-//   });
-
-
-// export default app;
-
-
+// File: server.js
 import express from "express";
 import cors from "cors";
-import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import Replicate from "replicate";
-import axios from "axios";
+import connectDB from './config/db.js';
+import userRoutes from './routes/userRoutes.js';
+import videoRoutes from './routes/videoRoutes.js';
 
+// Load environment variables
 dotenv.config();
 
+// Initialize Express app
 const app = express();
-const port = 5000;
+const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(bodyParser.json());
+// Middleware
+app.use(express.json());
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 
-// Initialize Replicate with the API token from environment variables
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/videos', videoRoutes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
-// Retrieve Gemini API key from environment variables
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY is not defined");
-}
-
-// POST endpoint to generate a video from a text prompt
-app.post("/api/generate-video", async (req, res) => {
+// Start server with database connection
+const startServer = async () => {
   try {
-    const { prompt } = req.body;
-console.log("Received prompt:", prompt);
-console.log("Gemini API response:", geminiResponse.data);
-console.log("Generated text:", generatedText);
-console.log("Replicate API response:", replicateResponse);
-
-    if (!prompt) {
-      return res.status(400).json({ message: "Prompt is required." });
+    // Connect to database (if using MongoDB)
+    if (process.env.MONGODB_URI) {
+      await connectDB();
+      console.log('Connected to database');
     }
-
-    // Step 1: Send prompt to Gemini to generate refined content
-    const geminiResponse = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-    const generatedText =
-      geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!generatedText) {
-      return res.status(500).json({ message: "Failed to generate content from Gemini." });
-    }
-
-    // Step 2: Use the generated text as input for Replicate to generate a video
-    const replicateResponse = await replicate.run(
-      "zsxkib/pyramid-flow:8e221e66498a52bb3a928a4b49d85379c99ca60fec41511265deec35d547c1fb",
-      { input: { prompt: generatedText } }
-    );
-
-    if (!replicateResponse || !replicateResponse.length) {
-      return res.status(500).json({ message: "Failed to generate video." });
-    }
-
-    // Return the video URL to the client
-    res.json({ videoUrl: replicateResponse[0] });
+    
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   } catch (error) {
-    console.error("Error generating video:", error);
-    res.status(500).json({ message: "Internal server error." });
+    console.error('Server startup error:', error);
+    process.exit(1);
   }
-});
+};
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+startServer();
 
+export default app;
